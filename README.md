@@ -5,6 +5,7 @@ A group Project for the bootcamp Data Engineering from Datascientest
 
 ## Table of Contents
 - [Installation](#installation)
+- [Work in Progress](#Work-in-Progress)
 - [Usage](#usage)
 - [Contributing](#contributing)
 
@@ -35,12 +36,20 @@ show collections #If everything went right, it should show "historical_trading_d
 db.historical_trading_data.find().pretty() #shows Data from the DB
 ```
 
+## Work in Progress
+Next step is, to link the ML model to the newly created MongoDB running in a Docker Container
+
 ## Usage
 Still in work
 
 ## Contributing
 @waladhibi (Wala Dhibi)
+
 @karanmoa-lab (Karan Moallim)
+
 @??? (Neha Srivastava)
+
 @Knoxxy (Ava Coban)
+
+As this is a groupProject for a bootcamp, no further contributors are needed currently
 
