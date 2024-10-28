@@ -42,8 +42,7 @@ python3 preporcess.py
 ```
 
 # check for new collections containing preprocessed data
-```show collections #If everything went right new "preprocessed_data" is shown
-as new mongodb collection
+```show collections #If everything went right new "preprocessed_data" is shown as new mongodb collection
 ```
 
 
