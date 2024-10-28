@@ -37,13 +37,14 @@ db.historical_trading_data.find().pretty() #shows Data from the DB
 ```
 
 # preprocess data 
-''' bash
+``` bash
 python3 preporcess.py 
-'''
+```
 
 # check for new collections containing preprocessed data
-show collections #If everything went right new "preprocessed_data" is shown
+```show collections #If everything went right new "preprocessed_data" is shown
 as new mongodb collection
+```
 
 
 ## Work in Progress
