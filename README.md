@@ -41,9 +41,9 @@ db.historical_trading_data.find().pretty() #shows Data from the DB
 python3 preporcess.py 
 ```
 
-# check for new collections containing preprocessed data
+# (optionally) check for new collections containing preprocessed data
 ```bash
-show collections #If everything went right new "preprocessed_data" is shown as new mongodb collection
+show collections #If everything went right new "preprocessed_data" is shown as new mongodb collection (accessed via mongo shell)
 ```
 
 
