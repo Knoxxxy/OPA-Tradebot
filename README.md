@@ -38,7 +38,7 @@ db.historical_trading_data.find().pretty() #shows Data from the DB
 
 # preprocess data 
 ``` bash
-python3 preporcess.py 
+python3 preprocessing.py 
 ```
 
 # (optionally) check for new collections containing preprocessed data
