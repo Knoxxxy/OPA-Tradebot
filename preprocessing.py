@@ -53,6 +53,11 @@ def preprocess_data(historical_data):
     historical_data['SMA_50'] = ta.sma(historical_data['close'], length=50)
     historical_data['SMA_200'] = ta.sma(historical_data['close'], length=200)
 
+    # Calculate additional features: Price_Change, Lag_1_Close, Lag_1_RSI
+    historical_data['Price_Change'] = historical_data['close'].pct_change() * 100  # Percentage change in close price
+    historical_data['Lag_1_Close'] = historical_data['close'].shift(1)  # 1-period lagged close price
+    historical_data['Lag_1_RSI'] = historical_data['RSI'].shift(1)
+
     # Drop rows with missing values (due to indicator calculation)
     historical_data.dropna(subset=['SMA_50', 'SMA_200', 'RSI'], inplace=True)
 
