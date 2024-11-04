@@ -36,6 +36,17 @@ show collections #If everything went right, it should show "historical_trading_d
 db.historical_trading_data.find().pretty() #shows Data from the DB
 ```
 
+# preprocess data 
+``` bash
+python3 preprocessing.py 
+```
+
+# (optionally) check for new collections containing preprocessed data
+```bash
+show collections #If everything went right new "preprocessed_data" is shown as new mongodb collection (accessed via mongo shell)
+```
+
+
 ## Work in Progress
 Next step is, to link the ML model to the newly created MongoDB running in a Docker Container
 
