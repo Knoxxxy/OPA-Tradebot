@@ -45,7 +45,7 @@ def train_model():
     # Print evaluation results
     print("Accuracy:", accuracy)
     print("F1 Score:", f1)
-    print("Precision:", precision)
+    print("Precision: ", precision)
     print("Recall:", recall)
     print("Confusion Matrix:\n", conf_matrix)
     print(classification_report(y_test, y_pred))

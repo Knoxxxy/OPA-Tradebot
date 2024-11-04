@@ -80,7 +80,7 @@ def make_prediction(previous_close):
     latest_data = pd.DataFrame([[RSI, SMA_50, SMA_200, price_change, previous_close]],
                                 columns=['RSI', 'SMA_50', 'SMA_200', 'Price_Change', 'Lag_1_Close'])
     # Print the head of latest_data
-    print("Latest DataFrame Head (first 5 entries):")
+    print("Latest DataFrame Head (first 5 entries): ")
     print(latest_data.head(5))
 
     # Check for NaN values and handle them
