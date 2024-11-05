@@ -1,0 +1,56 @@
+import time
+import joblib
+import requests
+import pandas as pd
+
+# Load the trained model
+model = joblib.load('random_forest_model.pkl')
+print("Model loaded successfully.")
+
+def get_real_time_data(pair='XXBTZUSD'):
+    """Fetches the latest market data from Kraken (or another exchange API)."""
+    url = f'https://api.kraken.com/0/public/Ticker?pair={pair}'
+    response = requests.get(url)
+    data = response.json()
+    close_price = float(data['result'][pair]['c'][0])  # 'c' is the close price
+    return close_price
+
+def make_prediction(previous_close):
+    """Generates a prediction based on the latest data."""
+    latest_close = get_real_time_data()    
+    # Example feature calculations (Replace with actual calculations or use placeholders)
+    RSI = compute_rsi(latest_close)
+    SMA_50 = compute_sma_50(latest_close)
+    SMA_200 = compute_sma_200(latest_close)
+    price_change = latest_close - previous_close if previous_close else 0
+
+    # Create a DataFrame with the latest features for prediction
+    latest_data = pd.DataFrame([[RSI, SMA_50, SMA_200, price_change, previous_close]], 
+                               columns=['RSI', 'SMA_50', 'SMA_200', 'Price_Change', 'Lag_1_Close'])
+    
+    # Make prediction (1 for price increase, 0 for decrease)
+    prediction = model.predict(latest_data)
+    print(f"Prediction (1 for increase, 0 for decrease): {prediction[0]}")
+    return latest_close  # Return the current close price for use in the next prediction
+
+# Placeholder functions to compute indicators (replace with actual comdef compute_rsi(latest_close):
+    # Placeholder RSI calculation (use actual RSI computation in production)
+    return 50.0
+
+def compute_sma_50(latest_close):
+    # Placeholder for SMA calculation
+    return latest_close
+
+def compute_sma_200(latest_close):
+    # Placeholder for SMA calculation
+    return latest_close
+
+if __name__ == "__main__":
+    previous_close = None
+    while True:
+        try:
+            previous_close = make_prediction(previous_close)
+            time.sleep(60)  # Wait for 1 minute before the next prediction
+        except Exception as e:
+            print(f"Error during prediction: {e}")
+            time.sleep(60)  # Retry after 1 minute if there’s an error

@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: crypto_prediction_app
+    volumes:
+      - .:/app  # Mount the current directory into the container
+    depends_on:
+      - mongo
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/trading_data  # MongoDB URI environment variable
+    command: python prediction.py
+
+  mongo:
+    image: mongo:latest
+    container_name: mongo
+    ports:
+      - "27018:27017"  # Map host port 27018 to container port 27017
+    volumes:
+      - mongo_data:/data/db
+
+# Define the named volume for MongoDB
+volumes:
+  mongo_data:
+
