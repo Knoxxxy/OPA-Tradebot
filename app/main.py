@@ -1,7 +1,7 @@
 # app/main.py
 
 from fastapi import FastAPI
-from .routers import items
+import items
 
 
 app = FastAPI()

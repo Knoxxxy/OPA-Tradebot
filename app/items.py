@@ -1,25 +1,31 @@
 # app/routers/items.py
 
 from fastapi import APIRouter, FastAPI, File, UploadFile, HTTPException, Query
-from ..models import OHLCDataModel
-from ..database import db
+from fastapi.encoders import jsonable_encoder
+from models import OHLCDataModel
+from database import db
 from typing import List, Optional
 from datetime import datetime
 import pandas as pd
 import zipfile
 import io
+from bson import ObjectId
 
 router = APIRouter()
 
+# Helper function to convert datetime to timestamp
+def datetime_to_timestamp(dt: datetime) -> int:
+    return int(dt.timestamp() * 1000)
+
 # 1. Single Datapoint Write Endpoint
 @router.post("/ohlc/data-point")
-async def create_data_point(data: OHLCDataModel):
-    new_data = await db["ohlc_data"].insert_one(data)       #New Collection ohlc_data, might need changing
+async def create_data_point(data: OHLCDataModel, symbol: str):
+    new_data = await db[symbol].insert_one(data)       #New Collection ohlc_data, might need changing
     return {"message": "Data point added successfully", "id": str(new_data.inserted_id)}
 
 # 2. Bulk Data Upload Endpoint
 @router.post("/ohlc/upload-file")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(symbol: str, file: UploadFile = File(...)):
     if file.content_type not in ["application/zip", "text/csv"]:
         raise HTTPException(status_code=400, detail="Only ZIP or CSV files are accepted")
 
@@ -37,7 +43,7 @@ async def upload_file(file: UploadFile = File(...)):
         data_list = df.to_dict(orient="records")
 
     # Bulk insert into MongoDB
-    await db["ohlc_data"].insert_many(data_list)   #New Collection ohlc_data, might need changing
+    await db[symbol].insert_many(data_list)   #New Collection ohlc_data, might need changing
     return {"message": "File processed and data uploaded", "records_added": len(data_list)}
 
 # 3. Read Data with Filters
@@ -45,7 +51,7 @@ async def upload_file(file: UploadFile = File(...)):
 @router.get("/ohlc/data")
 async def get_data(symbol: str, start_date: Optional[str] = None, end_date: Optional[str] = None):
     # Dynamically select the collection based on the symbol
-    collection = db[symbol]  # This will dynamically refer to the collection with the name 'symbol'
+    collection = db[symbol]
     
     # Initialize the query dictionary
     query = {}
@@ -53,30 +59,34 @@ async def get_data(symbol: str, start_date: Optional[str] = None, end_date: Opti
     # Apply start_date filter if provided (converted to milliseconds)
     if start_date:
         try:
-            start_dt = datetime.fromisoformat(start_date)  # Convert to datetime
-            start_timestamp = datetime_to_timestamp(start_dt)  # Convert to milliseconds timestamp
-            query["open_time"] = {"$gte": start_timestamp}  # Filter for open_time >= start_timestamp
+            start_dt = datetime.fromisoformat(start_date)
+            start_timestamp = datetime_to_timestamp(start_dt)
+            query["open_time"] = {"$gte": start_timestamp}
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid start_date format. Please use ISO 8601 format.")
     
     # Apply end_date filter if provided (converted to milliseconds)
     if end_date:
         try:
-            end_dt = datetime.fromisoformat(end_date)  # Convert to datetime
-            end_timestamp = datetime_to_timestamp(end_dt)  # Convert to milliseconds timestamp
-            query["close_time"] = {"$lte": end_timestamp}  # Filter for close_time <= end_timestamp
+            end_dt = datetime.fromisoformat(end_date)
+            end_timestamp = datetime_to_timestamp(end_dt)
+            query["close_time"] = {"$lte": end_timestamp}
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid end_date format. Please use ISO 8601 format.")
     
     # Query the dynamically selected collection
-    data = await collection.find(query).to_list(1000)  # Fetch up to 1000 records
+    data = await collection.find(query, {"_id": 0}).to_list(1000)
 
     # If no data found
     if not data:
         raise HTTPException(status_code=404, detail="No data found for the given criteria.")
     
+    # Return the serialized data
+    
     return data
 
+    
+    
 
 """
 # 4. Delete Data
