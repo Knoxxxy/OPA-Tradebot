@@ -9,7 +9,7 @@ from tqdm import tqdm
 def get_mongo_connection():
     try:
         client = MongoClient("mongodb://localhost:27017/")
-        db = client['binance_data']
+        db = client['OPA_Data']
         collection = db['historical_trading_data']
         collection.create_index([("open_time", 1)], unique=True)
         return collection

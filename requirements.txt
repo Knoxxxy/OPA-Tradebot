@@ -1,0 +1,8 @@
+fastapi==0.95.0          # FastAPI web framework
+uvicorn==0.23.0          # ASGI server to run the FastAPI app
+motor==3.1.1             # Async MongoDB driver (Motor is the async version of PyMongo)
+pydantic==1.10.7         # Pydantic for data validation (FastAPI uses this internally)
+python-dotenv==1.0.0     # For loading environment variables from a .env file (optional)
+pymongo==4.4            # Compatible version of PyMongo for Motor 3.1.1
+pandas
+python-multipart
