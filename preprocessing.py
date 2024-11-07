@@ -3,13 +3,14 @@ import pandas_ta as ta
 from pymongo import MongoClient
 from datetime import datetime, timedelta
 
-# MongoDB connection settings
+# MongoDB connect settings
 def get_mongo_connection():
     try:
         client = MongoClient("mongodb://localhost:27017/")
         db = client['binance_data']
         historical_collection = db['historical_trading_data']
-        preprocessed_collection = db['preprocessed_btc_usdt_data']  # New collection for preprocessed data
+        preprocessed_collection = db['preprocessed_btc_usdt_data']
+        print("Connected to MongoDB successfully.")# New collection for preprocessed data
         return historical_collection, preprocessed_collection
     except Exception as e:
         print(f"Error connecting to MongoDB: {e}")
@@ -53,6 +54,11 @@ def preprocess_data(historical_data):
     historical_data['SMA_50'] = ta.sma(historical_data['close'], length=50)
     historical_data['SMA_200'] = ta.sma(historical_data['close'], length=200)
 
+    # Calculate additional features: Price_Change, Lag_1_Close, Lag_1_RSI
+    historical_data['Price_Change'] = historical_data['close'].pct_change() * 100  # Percentage change in close price
+    historical_data['Lag_1_Close'] = historical_data['close'].shift(1)  # 1-period lagged close price
+    historical_data['Lag_1_RSI'] = historical_data['RSI'].shift(1)
+
     # Drop rows with missing values (due to indicator calculation)
     historical_data.dropna(subset=['SMA_50', 'SMA_200', 'RSI'], inplace=True)
 
@@ -83,3 +89,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
