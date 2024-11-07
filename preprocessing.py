@@ -3,13 +3,14 @@ import pandas_ta as ta
 from pymongo import MongoClient
 from datetime import datetime, timedelta
 
-# MongoDB connection settings
+# MongoDB connect settings
 def get_mongo_connection():
     try:
         client = MongoClient("mongodb://localhost:27017/")
         db = client['binance_data']
         historical_collection = db['historical_trading_data']
-        preprocessed_collection = db['preprocessed_btc_usdt_data']  # New collection for preprocessed data
+        preprocessed_collection = db['preprocessed_btc_usdt_data']
+        print("Connected to MongoDB successfully.")# New collection for preprocessed data
         return historical_collection, preprocessed_collection
     except Exception as e:
         print(f"Error connecting to MongoDB: {e}")

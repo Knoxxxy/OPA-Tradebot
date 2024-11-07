@@ -12,18 +12,23 @@ collection = db['preprocessed_btc_usdt_data']  # Match the collection name used 
 
 def train_model():
     # Load preprocessed data from MongoDB
-    stored_data = list(collection.find({}, {'RSI': 1, 'SMA_50': 1, 'SMA_200': 1, 'Price_Change': 1, 'Lag_1_Close': 1}))
+    stored_data = list(collection.find({}, {'RSI': 1, 'SMA_50': 1, 'SMA_200': 1, 'Price_Change': 1, 'Lag_1_Close': 1, 'Lag_1_RSI': 1}))
     btc_usdt_data = pd.DataFrame(stored_data)
 
     # Define features (X) and target (y)
-    X = btc_usdt_data[['RSI', 'SMA_50', 'SMA_200', 'Price_Change', 'Lag_1_Close']]
+    X = btc_usdt_data[['Lag_1_RSI', 'SMA_50', 'SMA_200', 'Lag_1_Close']]
     y = (btc_usdt_data['Price_Change'] > 0).astype(int)  # Binary target: 1 if price increased, 0 if not
 
     # Print the features and target tables
     print("Features (X):")
-    print(X.head())  # Print the first 5 entries of features
+    print(X.head)  # Print the first 5 entries of features
     print("\nTarget (y):")
-    print(y.head())  # Print the first 5 entries of target
+    print(y.head)  # Print the first 5 entries of target
+
+    print("Features shape (X.shape):")
+    print(X.shape)
+    print("\nTarget shape (y.shape):")
+    print(y.shape)
 
     # Split data into training and test sets
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
@@ -32,7 +37,7 @@ def train_model():
     model = RandomForestClassifier(n_estimators=100, random_state=42)
     model.fit(X_train, y_train)
 
-    # Evaluate the model
+    # Evaluate the model and save predicitions
     y_pred = model.predict(X_test)
 
     # Calculate evaluation metrics
