@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import requests
 from pymongo import MongoClient
+import sys
 
 # Load the trained model
 model = joblib.load('random_forest_model.pkl')
@@ -28,8 +29,11 @@ def fetch_initial_data(pair='XXBTZUSD', interval=1, limit=200):
         return []
 
     ohlc_data = data['result'][pair]
-    close_prices = [float(candle[4]) for candle in ohlc_data]  # 4th index is the close price
+    # Ensure all close prices are numeric, converting non-numeric to NaN
+    close_prices = pd.to_numeric([candle[4] for candle in ohlc_data], errors='coerce')
+    close_prices = [price for price in close_prices if not np.isnan(price)]  # Filter out NaN values
     return close_prices
+
 
 # Initialize recent closes
 recent_closes = fetch_initial_data()
@@ -53,11 +57,16 @@ def get_real_time_data(pair='XXBTZUSD', interval=1):
     # Convert the raw data into a pandas DataFrame for easier analysis
     df_ohlc = pd.DataFrame(ohlc_data, columns=["Timestamp", "Open", "High", "Low", "Close", "VWAP", "Volume", "Count"])
 
+    # Ensure all columns are numeric where expected, converting errors to NaN
+    df_ohlc = df_ohlc.apply(pd.to_numeric, errors='coerce')
+    df_ohlc.dropna(inplace=True)  # Drop rows with NaN values after conversion
+
     # Display the first 5 entries of the DataFrame as a preview
     print("First 5 entries of OHLC data:")
-    print(df_ohlc.head())
+    print(df_ohlc.head(5))
 
-    return df_ohlc  # Return the whole DataFrame with all entries
+    return df_ohlc  # Return the whole DataFrame
+
 
 # Compute RSI using a list of closing prices
 def compute_rsi(prices, length=14):
@@ -73,12 +82,14 @@ def compute_rsi(prices, length=14):
     rsi = 100 - (100 / (1 + rs))
     return rsi
 
+
 # Compute SMA using a list of closing prices
 def compute_sma(prices, length):
     """Computes Simple Moving Average given a list of closing prices."""
     if len(prices) < length:
         return np.nan  # Not enough data for SMA
     return np.mean(prices[-length:])
+
 
 def make_prediction(previous_close):
     """Generates a prediction based on the latest data."""
@@ -89,27 +100,12 @@ def make_prediction(previous_close):
     if ohlc_data is None:
         return previous_close  # Skip this iteration if data fetch failed
 
-    # Extract the latest closing price from the OHLC data
-    closes = [float(entry[4]) for entry in ohlc_data]   # 4th index is the close price
-    #recent_closes.extend(closes)  # Add all close prices from this call
-    #print(f"Number of recent closes retrieved from API: {len(recent_closes)}")
-    print(f"Latest close prices from API: {closes[-5:]}")  # Display last 5 closes from the response
-
-    # Validate and clean closing prices (ensure they are numeric)
-    valid_closes = []
-    for close in closes:
-        try:
-            valid_closes.append(float(close))  # Try to convert to float
-        except ValueError:
-            print(f"Invalid close price encountered: {close}. Skipping this value.")
-            continue  # Skip invalid values
+    # Ensure all close prices from ohlc_data['Close'] are numeric
+    valid_closes = pd.to_numeric(ohlc_data['Close'], errors='coerce').dropna().tolist()
 
     if not valid_closes:
         print("No valid close prices available in the latest data. Skipping prediction.")
         return previous_close
-
-    print(f"Latest valid close prices from API: {valid_closes[-5:]}")  # Display last 5 valid closes from the response
-
 
     # Limit list to max required length (200 for SMA_200 calculation)
     if len(recent_closes) > 200:
@@ -135,7 +131,7 @@ def make_prediction(previous_close):
 
     # Update recent_closes with valid closes from the latest data
     recent_closes.extend(valid_closes)  # Add valid closes from this call
-    print(f"Updated recent_closes (last 5): {recent_closes[-5:]}")
+    print(f"Updated recent_closes with valid closes from the latest data (last 5): {recent_closes[-5:]}")
 
     # Calculate features
     RSI = compute_rsi(recent_closes)
@@ -148,7 +144,12 @@ def make_prediction(previous_close):
 
     # Create a DataFrame with the latest features for prediction
     latest_data = pd.DataFrame([[Lag_1_RSI, SMA_50, SMA_200, previous_close]],
-                                columns=['Lag_1_RSI', 'SMA_50', 'SMA_200', 'Lag_1_Close'])
+                               columns=['Lag_1_RSI', 'SMA_50', 'SMA_200', 'Lag_1_Close'])
+
+    # Check for NaN values and handle them
+    if latest_data.isnull().values.any():
+        print("Warning: NaN values found in features even after sufficient data collected.")
+        latest_data = latest_data.fillna(0)  # Replace NaNs with 0
     # Print the head of latest_data
     print("Latest DataFrame with calculated features used for prediction: ")
     print(latest_data)
@@ -164,8 +165,25 @@ def make_prediction(previous_close):
     actual_prices.append(recent_closes[-1])  # Use the most recent close for actual prices
     timestamps.append(datetime.now())  # Store current time for logging purposes
 
-    print(f"Prediction (1 for increase, 0 for decrease): {prediction[0]} - Actual Price: {recent_closes[-1] }")
-    return recent_closes[-1]   # Return the current close price for use in the next prediction
+    print(f"Prediction (1 for increase, 0 for decrease): {prediction[0]} - Actual Price: {recent_closes[-1]}")
+    return recent_closes[-1]  # Return the current close price for use in the next prediction
+
+
+
+# MongoDB connection settings
+def get_mongo_connection(collection_name):
+    """
+    Connects to the MongoDB database and returns a collection.
+    Allows specifying the collection name to use.
+    """
+    try:
+        client = MongoClient("mongodb://localhost:27017/")
+        db = client['binance_data']  # Using the same database
+        collection = db[collection_name]  # Dynamic collection
+        return collection
+    except Exception as e:
+        print(f"Error connecting to MongoDB: {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
@@ -174,13 +192,7 @@ if __name__ == "__main__":
     while True:
         try:
             previous_close = make_prediction(previous_close)
-            # Save prediction data to MongoDB
-            prediction_data = {
-                'timestamp': datetime.now(),
-                'predicted_trend': predicted_trends[-1],
-                'actual_price': actual_prices[-1],
-                'previous_close': previous_close
-            }
+           # Ensure there is at least one prediction and actual price before saving
 
             time.sleep(60)  # Wait for 1 minute before the next prediction
         except Exception as e:
