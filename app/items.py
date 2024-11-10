@@ -10,6 +10,8 @@ import pandas as pd
 import zipfile
 import io
 from bson import ObjectId
+from pymongo import MongoClient
+import preprocessing
 
 router = APIRouter()
 
@@ -18,13 +20,13 @@ def datetime_to_timestamp(dt: datetime) -> int:
     return int(dt.timestamp() * 1000)
 
 # 1. Single Datapoint Write Endpoint
-@router.post("/ohlc/data-point")
+@router.post("/data-point")
 async def create_data_point(data: OHLCDataModel, symbol: str):
     new_data = await db[symbol].insert_one(data)       #New Collection ohlc_data, might need changing
     return {"message": "Data point added successfully", "id": str(new_data.inserted_id)}
 
 # 2. Bulk Data Upload Endpoint
-@router.post("/ohlc/upload-file")
+@router.post("/upload-file")
 async def upload_file(symbol: str, file: UploadFile = File(...)):
     if file.content_type not in ["application/zip", "text/csv"]:
         raise HTTPException(status_code=400, detail="Only ZIP or CSV files are accepted")
@@ -48,7 +50,7 @@ async def upload_file(symbol: str, file: UploadFile = File(...)):
 
 # 3. Read Data with Filters
 
-@router.get("/ohlc/data")
+@router.get("/data")
 async def get_data(symbol: str, start_date: Optional[str] = None, end_date: Optional[str] = None):
     # Dynamically select the collection based on the symbol
     collection = db[symbol]
@@ -85,12 +87,23 @@ async def get_data(symbol: str, start_date: Optional[str] = None, end_date: Opti
     
     return data
 
-    
-    
+# Get Collection names Endpoint
+
+@router.get("/trade-pairs")
+async def get_trade_pairs():
+    collection_names = await db.list_collection_names()
+    return collection_names
+
+# Use Preprocessing script on DB
+
+@router.post("/preprocessing")
+async def post_preprocessing(symbol: str):
+    return {"message": await preprocessing.preprocessing_ml_data(symbol)}
+      
 
 """
 # 4. Delete Data
-@router.delete("/ohlc/data")
+@router.delete("/data")
 async def delete_data(symbol: str, start_date: Optional[str] = None, end_date: Optional[str] = None):
     query = {"symbol": symbol}
     if start_date:

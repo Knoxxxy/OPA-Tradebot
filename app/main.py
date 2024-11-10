@@ -7,7 +7,7 @@ import items
 app = FastAPI()
 
 # Include the items router
-app.include_router(items.router, prefix="/items", tags=["items"])
+app.include_router(items.router, tags=["items"])
 
 # Root route
 @app.get("/")
