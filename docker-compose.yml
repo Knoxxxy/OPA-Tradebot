@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  fastapi:
+    build:
+      context: .  # This should be the directory where your Dockerfile is located
+    container_name: fastapi_app
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017
+    depends_on:
+      - mongodb
+    volumes:
+      - ./app:/app  # Mounts the current directory to /app in the container
+      - /app/__pycache__  # Ignore Python cache files
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload --app-dir /app  # Enables auto-reload
+  
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb_OPA
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:

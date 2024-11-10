@@ -8,7 +8,7 @@ from pymongo import MongoClient
 def get_mongo_connection():
     try:
         client = MongoClient("mongodb://localhost:27017/")
-        db = client['binance_data']
+        db = client['OPA_Data']
         collection = db['historical_trading_data']
         return collection
     except Exception as e:

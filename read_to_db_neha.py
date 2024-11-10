@@ -2,16 +2,14 @@ import os
 import zipfile
 import pandas as pd
 import json
-from pymongo import MongoClient, errors
-from tqdm import tqdm
+from pymongo import MongoClient
 
 # MongoDB connection settings
 def get_mongo_connection():
     try:
         client = MongoClient("mongodb://localhost:27017/")
-        db = client['OPA_Data']
+        db = client['binance_data']
         collection = db['historical_trading_data']
-        collection.create_index([("open_time", 1)], unique=True)
         return collection
     except Exception as e:
         print(f"Error connecting to MongoDB: {e}")
@@ -25,46 +23,53 @@ def extract_zip(zip_file, extract_dir):
     print(f"Files extracted to {extract_dir}")
 
 # Function to import CSV files into MongoDB
-def import_csv(file_path, collection):
+def import_csv(file_path, collection, symbol):
     print(f"Importing CSV file: {file_path}")
     df = pd.read_csv(file_path)
     data = df.to_dict(orient='records')
     
-    for record in tqdm(data, desc="Inserting records", unit="record"):
-        try:
-            collection.insert_one(record)
-        except errors.DuplicateKeyError:
-           continue
+    if data:
+        # Add the key (first 7 chars of the filename) as a key-value pair in each document
+        for record in data:
+            record['key'] = symbol
+        
+        collection.insert_many(data)
+        print(f"Inserted {len(data)} records from {file_path} into MongoDB.")
+    else:
+        print(f"No data found in {file_path}")
 
 # Function to import JSON files into MongoDB
-# Data is in CSV Format, so it might not be needed
-"""def import_json(file_path, collection):
+def import_json(file_path, collection, symbol):
     print(f"Importing JSON file: {file_path}")
     with open(file_path, 'r') as f:
         data = json.load(f)
+    
     if isinstance(data, list):
+        # Add the key (first 7 chars of the filename) as a key-value pair in each document
+        for record in data:
+            record['key'] = symbol
+        
         collection.insert_many(data)
     else:
+        data['key'] = symbol  # Add key field to the single JSON document
         collection.insert_one(data)
+    
     print(f"Inserted data from {file_path} into MongoDB.")
-"""
 
 # Function to process extracted files (CSV or JSON)
 def process_files(extract_dir, collection):
-    # Use os.walk to gather all CSV files recursively
-    csv_files = []
-    for root, dirs, files in os.walk(extract_dir):
-        for filename in files:
-            if filename.endswith(".csv"):
-                csv_files.append(os.path.join(root, filename))
-                print(f"Found CSV file: {os.path.join(root, filename)}")  # Debugging output
-
-     # Debugging: Print the number of CSV files found
-    print(f"Found {len(csv_files)} CSV files to process.")
-    
-    # Create a progress bar with tqdm
-    for file_path in tqdm(csv_files, desc="Processing CSV files", unit="file"):
-        import_csv(file_path, collection)
+    for filename in os.listdir(extract_dir):
+        file_path = os.path.join(extract_dir, filename)
+        
+        # Extract the first 7 characters from the filename (e.g., BTCUSDC)
+        symbol = filename[:7]
+        
+        if filename.endswith(".csv"):
+            import_csv(file_path, collection, symbol)
+        elif filename.endswith(".json"):
+            import_json(file_path, collection, symbol)
+        else:
+            print(f"Skipping unsupported file: {filename}")
 
 # Main function
 def main():
@@ -84,9 +89,8 @@ def main():
             # Extract ZIP file
             extract_zip(zip_path, extract_dir)
 
-    
-    # Process extracted files (CSV/JSON) and insert into MongoDB
-    process_files(extract_base_dir, collection)
+            # Process extracted files (CSV/JSON) and insert into MongoDB
+            process_files(extract_dir, collection)
 
     print("Data import completed for all ZIP files.")
 
