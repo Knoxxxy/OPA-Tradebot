@@ -14,7 +14,7 @@ How to set up on our Ubuntu VM:
 
 # Clone the repository:
 ```bash
-git clone https://github.com/knoxxy/OPA-Tradebot
+git clone https://github.com/knoxxxy/OPA-Tradebot
 cd ./OPA-Tradebot
 ```
 # Update Docker and initiate MongoDB in a Docker container:
