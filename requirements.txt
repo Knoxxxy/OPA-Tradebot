@@ -25,3 +25,4 @@ threadpoolctl==3.5.0
 tqdm==4.66.6
 tzdata==2024.2
 urllib3==2.2.3
+docker

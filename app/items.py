@@ -1,5 +1,6 @@
 # app/routers/items.py
 
+import docker
 from fastapi import APIRouter, FastAPI, File, UploadFile, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
 from models import OHLCDataModel
@@ -9,11 +10,16 @@ from datetime import datetime
 import pandas as pd
 import zipfile
 import io
+import os
+from io import BytesIO
 from bson import ObjectId
 from pymongo import MongoClient
 import preprocessing
+import base64
 
 router = APIRouter()
+client = docker.from_env()
+ubuntu_container = client.containers.get("ubuntu_script_runner")
 
 # Helper function to convert datetime to timestamp
 def datetime_to_timestamp(dt: datetime) -> int:
@@ -94,12 +100,78 @@ async def get_trade_pairs():
     collection_names = await db.list_collection_names()
     return collection_names
 
-# Use Preprocessing script on DB
 
-@router.post("/preprocessing")
-async def post_preprocessing(symbol: str):
-    return {"message": await preprocessing.preprocessing_ml_data(symbol)}
-      
+
+@router.post("/run-script/{script_name}")
+async def run_script(script_name: str):
+    # Check if the script file exists
+    script_path = f"/scripts/{script_name}"
+    
+    
+    # Access the ubuntu_script_runner container
+    try:
+        # Run the script inside the ubuntu container
+        exit_code, output = ubuntu_container.exec_run(f"python3 /scripts/{script_name}", stdout=True, stderr=True)
+        if exit_code != 0:
+            return {"error": output.decode('utf-8')}
+        
+        return {"message": "Script executed successfully", "output": output.decode('utf-8')}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to execute script: {str(e)}")
+
+@router.get("/scripts-available")
+async def get_script_files():
+    try:
+       
+        # Run the 'ls' command inside the Ubuntu container to list files in the /scripts directory
+        exit_code, output = ubuntu_container.exec_run("ls /scripts", stdout=True, stderr=True)
+        
+        # Decode the output from bytes to a string
+        files = output.decode().splitlines()  # Split by new lines to get individual file names
+        
+        # Return the list of files
+        return {"files": files}
+    
+    except docker.errors.NotFound:
+        return {"error": "Ubuntu container not found"}
+    except Exception as e:
+        return {"error": str(e)}
+    
+@router.post("/upload-script/")
+async def upload_script(script: UploadFile = File(...)):
+    # Log the file information
+    print(f"Received file: {script.filename}, Content-Type: {script.content_type}")
+
+    # Check if the file is a Python file
+    if not script.filename.endswith(".py"):
+        raise HTTPException(status_code=400, detail="The uploaded file is not a Python file.")
+
+    try:
+        # Save the file temporarily in the FastAPI container
+        script_path = f"/tmp/{script.filename}"
+        with open(script_path, "wb") as f:
+            contents = await script.read()
+            f.write(contents)
+
+        # If you are transferring this to another container, perform the transfer here
+        # For example, with docker's `put_archive` or `docker exec`
+        exec_result = ubuntu_container.exec_run(f"cd /tmp/{script.filename} /scripts/{script.filename}", stdout=True, stderr=True)
+
+        # Capture output and error messages
+        output = exec_result.output.decode("utf-8")
+
+        # Check the exit code to ensure the command ran successfully
+        if exec_result.exit_code != 0:
+            raise HTTPException(status_code=500, detail=f"Script execution failed: {output}")
+
+        return {"message": f"Script '{script.filename}' uploaded successfully."}
+
+    except docker.errors.NotFound:
+        raise HTTPException(status_code=404, detail="Ubuntu container not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+    
 
 """
 # 4. Delete Data

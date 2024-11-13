@@ -7,8 +7,8 @@ from pymongo import MongoClient
 # MongoDB connection settings
 def get_mongo_connection():
     try:
-        client = MongoClient("mongodb://localhost:27017/")
-        db = client['OPA_Data']
+        client = MongoClient("mongodb://mongodb:27017")
+        db = client['binance_data']
         collection = db['historical_trading_data']
         return collection
     except Exception as e:
@@ -23,25 +23,37 @@ def extract_zip(zip_file, extract_dir):
     print(f"Files extracted to {extract_dir}")
 
 # Function to import CSV files into MongoDB
-def import_csv(file_path, collection):
+def import_csv(file_path, collection, symbol):
     print(f"Importing CSV file: {file_path}")
     df = pd.read_csv(file_path)
     data = df.to_dict(orient='records')
+    
     if data:
+        # Add the key (first 7 chars of the filename) as a key-value pair in each document
+        for record in data:
+            record['key'] = symbol
+        
         collection.insert_many(data)
         print(f"Inserted {len(data)} records from {file_path} into MongoDB.")
     else:
         print(f"No data found in {file_path}")
 
 # Function to import JSON files into MongoDB
-def import_json(file_path, collection):
+def import_json(file_path, collection, symbol):
     print(f"Importing JSON file: {file_path}")
     with open(file_path, 'r') as f:
         data = json.load(f)
+    
     if isinstance(data, list):
+        # Add the key (first 7 chars of the filename) as a key-value pair in each document
+        for record in data:
+            record['key'] = symbol
+        
         collection.insert_many(data)
     else:
+        data['key'] = symbol  # Add key field to the single JSON document
         collection.insert_one(data)
+    
     print(f"Inserted data from {file_path} into MongoDB.")
 
 # Function to process extracted files (CSV or JSON)
@@ -49,18 +61,21 @@ def process_files(extract_dir, collection):
     for filename in os.listdir(extract_dir):
         file_path = os.path.join(extract_dir, filename)
         
+        # Extract the first 7 characters from the filename (e.g., BTCUSDC)
+        symbol = filename[:7]
+        
         if filename.endswith(".csv"):
-            import_csv(file_path, collection)
+            import_csv(file_path, collection, symbol)
         elif filename.endswith(".json"):
-            import_json(file_path, collection)
+            import_json(file_path, collection, symbol)
         else:
             print(f"Skipping unsupported file: {filename}")
 
 # Main function
 def main():
     # Set the path to your folder containing ZIP files
-    zip_folder = "Historical_data_Binance" 
-    extract_base_dir = "./extracted_binance_data"
+    zip_folder = "/data/Historical_data_Binance" 
+    extract_base_dir = "/data/extracted_binance_data"
 
     # Connect to MongoDB
     collection = get_mongo_connection()

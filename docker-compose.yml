@@ -4,17 +4,21 @@ services:
   fastapi:
     build:
       context: .  # This should be the directory where your Dockerfile is located
+      dockerfile: Dockerfile_fastapi
     container_name: fastapi_app
     ports:
       - "8000:8000"
     environment:
       - MONGO_URL=mongodb://mongodb:27017
-    depends_on:
-      - mongodb
     volumes:
       - ./app:/app  # Mounts the current directory to /app in the container
       - /app/__pycache__  # Ignore Python cache files
+      - /var/run/docker.sock:/var/run/docker.sock  # Mount Docker socket
+      - /tmp:/tmp
+
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload --app-dir /app  # Enables auto-reload
+    security_opt:
+      - apparmor=unconfined
   
   mongodb:
     image: mongo:latest
@@ -23,6 +27,29 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+    security_opt:
+      - apparmor=unconfined
+  
+  ubuntu:
+    build:
+      context: .  # This should be the directory where your Dockerfile_ubuntu is located
+      dockerfile: Dockerfile_ubuntu
+    container_name: ubuntu_script_runner
+    volumes:
+      - ./scripts:/scripts  # Mounts a volume for scripts into the /scripts directory
+      - ./data:/data        # Mounts a volume for data
+    tty: true  # Keeps the container running (useful for manual interaction)
+    environment:
+      - SCRIPT_DIR=/scripts  # Environment variable for script directory path
+      - DATA_DIR=/data
+      - /tmp:/tmp
+    security_opt:
+      - apparmor=unconfined 
+
 
 volumes:
   mongo_data:
+  scripts: 
+    driver: local
+  data:
+    driver: local
