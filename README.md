@@ -5,8 +5,8 @@ A group Project for the bootcamp Data Engineering from Datascientest
 
 ## Table of Contents
 - [Installation](#installation)
-- [Work in Progress](#Work-in-Progress)
-- [Usage](#usage)
+- [API access](#API-access)
+- [Needs for Script running via API](Needs-for-Script-running-via-API)
 - [Contributing](#contributing)
 
 ## Installation
@@ -41,9 +41,6 @@ show collections #If everything went right, it should show "historical_trading_d
 db.historical_trading_data.find().pretty() #shows Data from the DB
 ```
 
-# API access
-Newly build API access. For docs look at:
-http://your.VM.IP:8000/docs
 # preprocess data 
 ``` bash
 python3 preprocessing.py 
@@ -53,13 +50,25 @@ python3 preprocessing.py
 ```bash
 show collections #If everything went right new "preprocessed_data" is shown as new mongodb collection (accessed via mongo shell)
 ```
+## API access
+API Acess to have indirect access to the Bot
+http://your.VM.IP:8000/docs
+
+## Needs for Script running via API
+``` python
+def get_mongo_connection():
+    try:
+        client = MongoClient("mongodb://mongodb:27017/") # IP adress needs mongodb network defined in Docker-Compose
+        db = client['OPA_Data'] # Currently, our DB is OPA_Data, and this shouldnt change in the future
+        collection = db['BTCUSD'] # The Idea is, to let the collection names reflect the Trading Pairs
+        return collection
+    except Exception as e:
+        print(f"Error connecting to MongoDB: {e}")
+        sys.exit(1)
+```
 
 
-## Work in Progress
-Next step is, to link the ML model to the newly created MongoDB running in a Docker Container
 
-## Usage
-Still in work
 
 ## Contributing
 @waladhibi (Wala Dhibi)

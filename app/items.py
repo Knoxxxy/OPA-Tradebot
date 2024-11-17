@@ -28,12 +28,19 @@ def datetime_to_timestamp(dt: datetime) -> int:
 # 1. Single Datapoint Write Endpoint
 @router.post("/data-point")
 async def create_data_point(data: OHLCDataModel, symbol: str):
+    """
+    Entry point for singular Data Entry
+    """
     new_data = await db[symbol].insert_one(data)       #New Collection ohlc_data, might need changing
     return {"message": "Data point added successfully", "id": str(new_data.inserted_id)}
 
 # 2. Bulk Data Upload Endpoint
 @router.post("/upload-file")
 async def upload_file(symbol: str, file: UploadFile = File(...)):
+    """
+    Upload Data in ZIP or CSV format for direct Data Entry.\n
+    The File doesnt get saved, and is directly inputted into MongoDB.
+    """
     if file.content_type not in ["application/zip", "text/csv"]:
         raise HTTPException(status_code=400, detail="Only ZIP or CSV files are accepted")
 
@@ -58,6 +65,10 @@ async def upload_file(symbol: str, file: UploadFile = File(...)):
 
 @router.get("/data")
 async def get_data(symbol: str, start_date: Optional[str] = None, end_date: Optional[str] = None):
+    
+    """
+    Returns Data from MongoDB with a symbol (i.e. BTCUSD), and a start end end date
+    """
     # Dynamically select the collection based on the symbol
     collection = db[symbol]
     
@@ -97,6 +108,9 @@ async def get_data(symbol: str, start_date: Optional[str] = None, end_date: Opti
 
 @router.get("/trade-pairs")
 async def get_trade_pairs():
+    """
+    Returns the names of all existing Collections in the DB
+    """
     collection_names = await db.list_collection_names()
     return collection_names
 
@@ -105,6 +119,10 @@ async def get_trade_pairs():
 @router.post("/run-script/{script_name}")
 async def run_script(script_name: str):
     # Check if the script file exists
+    
+    """
+    Run a script on the Ubuntu Script Runner container
+    """
     script_path = f"/scripts/{script_name}"
     
     
@@ -121,6 +139,9 @@ async def run_script(script_name: str):
 
 @router.get("/scripts-available")
 async def get_script_files():
+    """
+    Returns all file names in the Scripts folder of the scriptrunner
+    """
     try:
        
         # Run the 'ls' command inside the Ubuntu container to list files in the /scripts directory
@@ -139,37 +160,29 @@ async def get_script_files():
     
 @router.post("/upload-script/")
 async def upload_script(script: UploadFile = File(...)):
-    # Log the file information
-    print(f"Received file: {script.filename}, Content-Type: {script.content_type}")
-
-    # Check if the file is a Python file
+    """
+    Currently not functional.\n
+    Upload a Script into the scriptfolder
+    """
+    
+    UPLOAD_FOLDER = "/scripts"
+    #os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    # Ensure the uploaded file has a .py extension
     if not script.filename.endswith(".py"):
-        raise HTTPException(status_code=400, detail="The uploaded file is not a Python file.")
-
+        raise HTTPException(status_code=400, detail="Only .py files are allowed")
+    
+    file_path = os.path.join(UPLOAD_FOLDER, script.filename)
+    
+    # Save the uploaded file
     try:
-        # Save the file temporarily in the FastAPI container
-        script_path = f"/tmp/{script.filename}"
-        with open(script_path, "wb") as f:
-            contents = await script.read()
-            f.write(contents)
-
-        # If you are transferring this to another container, perform the transfer here
-        # For example, with docker's `put_archive` or `docker exec`
-        exec_result = ubuntu_container.exec_run(f"cd /tmp/{script.filename} /scripts/{script.filename}", stdout=True, stderr=True)
-
-        # Capture output and error messages
-        output = exec_result.output.decode("utf-8")
-
-        # Check the exit code to ensure the command ran successfully
-        if exec_result.exit_code != 0:
-            raise HTTPException(status_code=500, detail=f"Script execution failed: {output}")
-
-        return {"message": f"Script '{script.filename}' uploaded successfully."}
-
-    except docker.errors.NotFound:
-        raise HTTPException(status_code=404, detail="Ubuntu container not found")
+        with open(file_path, "wb") as f:
+            content = await script.read()  # Read file content asynchronously
+            f.write(content)  # Write content to the file
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
+    
+    return {"filename": script.filename, "message": "File uploaded successfully!"}
+
 
     
 

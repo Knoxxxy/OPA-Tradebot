@@ -7,7 +7,7 @@ from pymongo import MongoClient
 # MongoDB connection settings
 def get_mongo_connection():
     try:
-        client = MongoClient("mongodb://localhost:27017/")
+        client = MongoClient("mongodb://mongodb:27017/")
         db = client['OPA_Data']
         collection = db['historical_trading_data']
         return collection
@@ -59,8 +59,8 @@ def process_files(extract_dir, collection):
 # Main function
 def main():
     # Set the path to your folder containing ZIP files
-    zip_folder = "../data/Historical_data_Binance" 
-    extract_base_dir = "../data/extracted_binance_data"
+    zip_folder = "/data/Historical_data_Binance" 
+    extract_base_dir = "/data/extracted_binance_data"
 
     # Connect to MongoDB
     collection = get_mongo_connection()
