@@ -6,8 +6,8 @@ from sklearn.metrics import accuracy_score, classification_report, f1_score, pre
 from pymongo import MongoClient
 
 # MongoDB Connection Setup
-client = MongoClient('mongodb://localhost:27017/')
-db = client['binance_data']  # Match the database used in preprocessing.py
+client = MongoClient('mongodb://mongodb:27017/')
+db = client['OPA_Data']  # Match the database used in preprocessing.py
 collection = db['preprocessed_btc_usdt_data']  # Match the collection name used in preprocessing.py
 
 def train_model():

@@ -177,8 +177,8 @@ def get_mongo_connection(collection_name):
     Allows specifying the collection name to use.
     """
     try:
-        client = MongoClient("mongodb://localhost:27017/")
-        db = client['binance_data']  # Using the same database
+        client = MongoClient("mongodb://mongodb:27017/")
+        db = client['OPA_Data']  # Using the same database
         collection = db[collection_name]  # Dynamic collection
         return collection
     except Exception as e:

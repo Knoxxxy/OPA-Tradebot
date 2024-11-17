@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from pymongo import MongoClient
 
 # MongoDB Connection Setup
-client = MongoClient('mongodb://localhost:27017/')  
+client = MongoClient('mongodb://mongodb:27017/')  
 db = client['trading_data']
 collection = db['btc_usdt_12h']
 
