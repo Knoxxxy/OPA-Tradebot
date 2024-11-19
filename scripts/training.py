@@ -1,3 +1,4 @@
+import sys
 import joblib
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -8,16 +9,22 @@ from pymongo import MongoClient
 # MongoDB Connection Setup
 client = MongoClient('mongodb://mongodb:27017/')
 db = client['OPA_Data']  # Match the database used in preprocessing.py
-collection = db['preprocessed_btc_usdt_data']  # Match the collection name used in preprocessing.py
 
-def train_model():
+
+def train_model(collection_name):
     # Load preprocessed data from MongoDB
+    collection = db[collection_name]
     stored_data = list(collection.find({}, {'RSI': 1, 'SMA_50': 1, 'SMA_200': 1, 'Price_Change': 1, 'Lag_1_Close': 1, 'Lag_1_RSI': 1}))
-    btc_usdt_data = pd.DataFrame(stored_data)
+    collection_data = pd.DataFrame(stored_data)
+
+    # Check if data is loaded successfully
+    if collection_data.empty:
+        print(f"No data found in collection '{collection_name}'. Exiting...")
+        return
 
     # Define features (X) and target (y)
-    X = btc_usdt_data[['Lag_1_RSI', 'SMA_50', 'SMA_200', 'Lag_1_Close']]
-    y = (btc_usdt_data['Price_Change'] > 0).astype(int)  # Binary target: 1 if price increased, 0 if not
+    X = collection_data[['Lag_1_RSI', 'SMA_50', 'SMA_200', 'Lag_1_Close']]
+    y = (collection_data['Price_Change'] > 0).astype(int)  # Binary target: 1 if price increased, 0 if not
 
     # Print the features and target tables
     print("Features (X):")
@@ -60,4 +67,9 @@ def train_model():
     print("Model saved as 'random_forest_model.pkl' inside your project folder.")
 
 if __name__ == "__main__":
-    train_model()
+    if len(sys.argv) != 2:
+        print("Usage: python3 training.py <collection_name>")
+        sys.exit(1)
+
+    collection_name = sys.argv[1]
+    train_model(collection_name)
