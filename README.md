@@ -67,6 +67,24 @@ def get_mongo_connection():
         print(f"Error connecting to MongoDB: {e}")
         sys.exit(1)
 ```
+To pass Arguments from the API to the script, use:
+``` python
+import argparse
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Script for preprocessing.")
+    parser.add_argument('arg1', type=str, help="Argument 1")
+    parser.add_argument('arg2', type=str, help="Argument 2")
+    parser.add_argument('--optionalArgument1', type=str, help="OptionalArgument", default=None)
+    parser.add_argument('--optionalArgument2', type=str, help="OptionalArgument", default="Hey")
+
+    # Parse the arguments
+    args = parser.parse_args()
+    
+    # Call the main function with the parsed symbol
+    main(args.arg1, args.arg2, args.optionalArgument1, args.optionalArgument2)
+```
+
 ## Architecture
 The Bot runs on three Containers.
 

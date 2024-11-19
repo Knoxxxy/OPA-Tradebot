@@ -3,7 +3,7 @@
 import docker
 from fastapi import APIRouter, FastAPI, File, UploadFile, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
-from models import OHLCDataModel
+from models import OHLCDataModel, ScriptArgs
 from database import db
 from typing import List, Optional
 from datetime import datetime
@@ -14,7 +14,6 @@ import os
 from io import BytesIO
 from bson import ObjectId
 from pymongo import MongoClient
-import preprocessing
 import base64
 
 router = APIRouter()
@@ -117,7 +116,7 @@ async def get_trade_pairs():
 
 
 @router.post("/run-script/{script_name}")
-async def run_script(script_name: str):
+async def run_script(script_name: str, script_args: ScriptArgs):
     # Check if the script file exists
     
     """
@@ -125,11 +124,12 @@ async def run_script(script_name: str):
     """
     script_path = f"/scripts/{script_name}"
     
+    command = f"python3 {script_path} " + " ".join(script_args.args)
     
     # Access the ubuntu_script_runner container
     try:
         # Run the script inside the ubuntu container
-        exit_code, output = ubuntu_container.exec_run(f"python3 /scripts/{script_name}", stdout=True, stderr=True)
+        exit_code, output = ubuntu_container.exec_run(command, stdout=True, stderr=True)
         if exit_code != 0:
             return {"error": output.decode('utf-8')}
         
@@ -161,12 +161,11 @@ async def get_script_files():
 @router.post("/upload-script/")
 async def upload_script(script: UploadFile = File(...)):
     """
-    Currently not functional.\n
     Upload a Script into the scriptfolder
     """
     
     UPLOAD_FOLDER = "/scripts"
-    #os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     # Ensure the uploaded file has a .py extension
     if not script.filename.endswith(".py"):
         raise HTTPException(status_code=400, detail="Only .py files are allowed")
@@ -183,7 +182,32 @@ async def upload_script(script: UploadFile = File(...)):
     
     return {"filename": script.filename, "message": "File uploaded successfully!"}
 
+@router.post("/upload-file/")
+async def upload_file(file: UploadFile = File(...), folder: str = "uploaded"):
+    """
+    Upload a file (CSV or ZIP) and save it to the /data/Uploaded folder.
+    """
+    # Get the filename and ensure the file is either a .csv or .zip
+    filename = file.filename
+    
+    if not (filename.endswith(".csv") or filename.endswith(".zip")):
+        raise HTTPException(status_code=400, detail="Only .csv or .zip files are allowed")
 
+    UPLOAD_FOLDER = f"/data/{folder}"
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    file_path = os.path.join(UPLOAD_FOLDER, filename)
+
+    # Save the file to the server
+    try:
+        with open(file_path, "wb") as f:
+            content = await file.read()  # Read the file content
+            f.write(content)  # Write it to the disk
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
+
+    return {"filename": filename, "message": "File uploaded successfully!"}
+
+    
     
 
 """

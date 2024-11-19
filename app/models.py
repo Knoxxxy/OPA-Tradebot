@@ -22,3 +22,6 @@ class OHLCDataModel(BaseModel):
         allow_population_by_field_name = True
         arbitrary_types_allowed = False
         json_encoders = {ObjectId: str}
+
+class ScriptArgs(BaseModel):
+    args: list[str]  # This will hold the list of arguments to pass to the script
